@@ -1,6 +1,7 @@
 import javax.swing.*
 import javax.swing.border.LineBorder
 import java.awt.Color
+import java.awt.event.ActionListener
 import java.awt.Font
 import kotlin.random.Random
 
@@ -11,8 +12,9 @@ val all_cards = all_denoms.map { Card(it) }
 open class Glyph(val x: Int, val y: Int) {
     val children: MutableList<Glyph> = mutableListOf()
 
-    fun addChild(child: Glyph) {
+    fun <T : Glyph> addChild(child: T): T {
         children.add(child)
+        return child
     }
 
     // Method to draw the glyph and its children
@@ -28,20 +30,57 @@ open class Glyph(val x: Int, val y: Int) {
 }
 
 class CardGlyph(x: Int, y: Int, val card: Card) : Glyph(x, y) {
-    override fun draw_this(frame: JFrame, offX: Int, offY: Int) {
-        val label = JLabel(card.denom.toString())
-        label.setBounds(offX, offY, 20, 20)
+    val label = JLabel(card.denom.toString())
+
+    init {
         label.border = LineBorder(Color.BLACK, 2)
         label.horizontalAlignment = JLabel.CENTER
         label.verticalAlignment = JLabel.CENTER
         label.font = Font("Arial", Font.PLAIN, 16)
         label.isVisible = true
+    }
+
+    override fun draw_this(frame: JFrame, offX: Int, offY: Int) {
+        label.setBounds(offX, offY, 20, 20)
         frame.add(label)
     }
 }
 
 class HandGlyph(x: Int, y: Int) : Glyph(x, y) {
-    fun addCard(card: Card) = children.add(CardGlyph(25*children.size, 0, card))
+    fun addCard(card: Card) : Glyph {
+        return addChild(CardGlyph(25*children.size, 0, card))
+    }
+}
+
+class StatusGlyph(x: Int, y: Int) : Glyph(x, y) {
+    val textArea = JTextArea()
+    val scrollPane = JScrollPane(textArea)
+
+    init {
+        textArea.isEditable = false // Make the text area read-only
+    }
+
+    fun appendText(text: String) {
+        textArea.append(text)
+    }
+
+    override fun draw_this(frame: JFrame, offX: Int, offY: Int) {
+        scrollPane.setBounds(offX, offY, 200, 100)
+        frame.add(scrollPane)
+    }
+}
+
+class ButtonGlyph(x: Int, y: Int, buttonText: String) : Glyph(x, y) {
+    val button = JButton(buttonText)
+
+    fun addListener(listener: ActionListener) {
+        button.addActionListener(listener)
+    }
+
+    override fun draw_this(frame: JFrame, offX: Int, offY: Int) {
+        button.setBounds(offX, offY, 100, 30)
+        frame.add(button)
+    }
 }
 
 class Shoe() {
@@ -75,15 +114,29 @@ fun main() {
     frame.layout = null // Disable layout manager for absolute positioning
 
     val shoe = Shoe()
-    var dealer = HandGlyph(15, 15)
+
+    val screen = Glyph(0, 0)
+
+    val playArea = screen.addChild(Glyph(0, 0))
+    var dealer = playArea.addChild(HandGlyph(15, 15))
     dealer.addCard(shoe.drawCard())
     dealer.addCard(Card(' '))
-    dealer.draw(frame)
+    var player = playArea.addChild(HandGlyph(15, 60))
+    player.addCard(shoe.drawCard())
+    player.addCard(shoe.drawCard())
 
-    var player = HandGlyph(15, 60)
-    player.addCard(shoe.drawCard())
-    player.addCard(shoe.drawCard())
-    player.draw(frame)
+    val status = playArea.addChild(StatusGlyph(100, 0))
+    status.appendText("Bet: 1\n")
+
+    val buttons = playArea.addChild(Glyph(0, 100))
+    val betButton = buttons.addChild(ButtonGlyph(0, 0, "Bet"))
+    betButton.addListener { status.appendText("Bet: 1\n") }
+    val dealButton = buttons.addChild(ButtonGlyph(100, 0, "Deal"))
+    dealButton.addListener { status.appendText("Deal\n") }
+    val hitButton = buttons.addChild(ButtonGlyph(200, 0, "Hit"))
+    hitButton.addListener { status.appendText("Hit\n") }
+
+    screen.draw(frame)
 
     // Make the frame visible
     frame.isVisible = true
