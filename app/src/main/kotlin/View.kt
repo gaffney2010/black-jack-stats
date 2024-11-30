@@ -3,35 +3,7 @@ import javax.swing.border.LineBorder
 import java.awt.Color
 import java.awt.event.ActionListener
 import java.awt.Font
-import kotlin.random.Random
 
-data class Card(val denom: Char);
-val all_denoms = listOf('A', '2', '3', '4', '5', '6', '7', '8', '9', 'T')
-val all_cards = all_denoms.map { Card(it) }
-
-enum class Player {
-    Dealer, Human
-}
-
-enum class PlayerBoth {
-    Dealer, Human, Both
-}
-
-enum class Result {
-    Human, Dealer, Tie, HumanBust, DealerBust
-}
-
-enum class Button {
-    Hit, Stand, Deal
-}
-
-fun cardValue(card: Card) : Int {
-    return when (card.denom) {
-        'A' -> 1
-        'T' -> 10
-        else -> card.denom.toString().toInt()
-    }
-}
 
 open class Glyph(val x: Int, val y: Int) {
     val children: MutableList<Glyph> = mutableListOf()
@@ -129,29 +101,6 @@ class ButtonGlyph(x: Int, y: Int, buttonText: String) : Glyph(x, y) {
     }
 }
 
-class Shoe() {
-    var distribution = all_cards.map { Pair(it, if (it.denom == 'T') 4 else 1) }.toMap()
-
-    fun drawCard() : Card {
-        val totalSum = distribution.values.sum()
-        val normalizedDistribution = distribution.mapValues { (_, value) ->
-            value.toDouble() / totalSum
-        }
-
-        val randomValue = Random.nextDouble() // Random value between 0.0 and 1.0
-        var cumulativeProbability = 0.0
-    
-        for ((key, probability) in normalizedDistribution) {
-            cumulativeProbability += probability
-            if (randomValue <= cumulativeProbability) {
-                return key
-            }
-        }
-
-        throw IllegalArgumentException("Invalid distribution.  This should never happen.")
-    }
-}
-
 class View(val frame: JFrame) {
     val screen = Glyph(0, 0)
     private lateinit var dispatcher: (Button) -> Unit
@@ -221,7 +170,7 @@ class View(val frame: JFrame) {
             Result.Dealer -> "Dealer wins\n"
             Result.Tie -> "Tie\n"
             Result.HumanBust -> "Player busts\n"
-            Result.DealerBust -> "Dealer wins\n"
+            Result.DealerBust -> "Dealer busts\n"
         })
         hitButton.disable()
         standButton.disable()
@@ -235,128 +184,4 @@ class View(val frame: JFrame) {
         standButton.enable()
         dealButton.disable()
     }
-}
-
-class Model() {
-    val shoe = Shoe()
-
-    var dealerShowing = 0
-    var humanShowing = 0
-    var isEndOfHand = false
-
-    private fun updateHand(player: Player, card: Card) {
-        if (player == Player.Dealer) {
-            dealerShowing += cardValue(card)
-        } else {
-            humanShowing += cardValue(card)
-        }
-    }
-
-    fun drawCardUpdateHand(player: Player) : Card {
-        val card = shoe.drawCard()
-        updateHand(player, card)
-        return card
-    }
-
-    fun showing(player: Player) : Int {
-        return when (player) {
-            Player.Dealer -> dealerShowing
-            Player.Human -> humanShowing
-        }
-    }
-
-    fun isBust(player: Player) : Boolean {
-        return when (player) {
-            Player.Dealer -> dealerShowing > 21
-            Player.Human -> humanShowing > 21
-        }
-    }
-    
-    fun dealerShouldDraw() : Boolean {
-        return dealerShowing < 17
-    }
-
-    fun result() : Result {
-        return when {
-            humanShowing > 21 -> Result.HumanBust
-            dealerShowing > 21 -> Result.DealerBust
-            humanShowing > dealerShowing -> Result.Human
-            humanShowing < dealerShowing -> Result.Dealer
-            else -> Result.Tie
-        }
-    }
-
-    fun updateEndOfHand() {
-        isEndOfHand = true
-    }
-
-    fun updateStartOfHand() {
-        dealerShowing = 0
-        humanShowing = 0
-        isEndOfHand = false
-    }
-}
-
-class Controller(val model: Model, val view: View) {
-    fun hit() {
-        val card = model.drawCardUpdateHand(Player.Human)
-        view.updateHand(Player.Human, card)
-        view.updateStatus(model.showing(Player.Dealer), model.showing(Player.Human), PlayerBoth.Human)
-        if (model.isBust(Player.Human)) {
-            view.updateEndOfHand(Result.HumanBust)
-            val card = model.drawCardUpdateHand(Player.Dealer)
-            view.updateHand(Player.Dealer, card)
-            model.updateEndOfHand()
-        }
-        view.draw()
-    }
-
-    fun stand() {
-        while (model.dealerShouldDraw()) {
-            val card = model.drawCardUpdateHand(Player.Dealer)
-            view.updateHand(Player.Dealer, card)
-        }
-        view.updateStatus(model.showing(Player.Dealer), model.showing(Player.Human), PlayerBoth.Both)
-        model.updateEndOfHand()
-        view.updateEndOfHand(model.result())
-        view.draw()
-    }
-
-    fun deal() {
-        view.updateStartOfHand()
-        model.updateStartOfHand()
-        var card = model.drawCardUpdateHand(Player.Dealer)
-        view.updateHand(Player.Dealer, card)
-        card = model.drawCardUpdateHand(Player.Human)
-        view.updateHand(Player.Human, card)
-        card = model.drawCardUpdateHand(Player.Human)
-        view.updateHand(Player.Human, card)
-        view.updateStatus(model.showing(Player.Dealer), model.showing(Player.Human))
-        view.draw()
-    }
-
-    fun dispatch(button: Button) {
-        when (button) {
-            Button.Hit -> hit()
-            Button.Stand -> stand()
-            Button.Deal -> deal()
-        }
-    }
-}
-
-fun main() {
-    // Create the main frame
-    val frame = JFrame("Black Jack")
-    frame.defaultCloseOperation = JFrame.EXIT_ON_CLOSE
-    frame.setSize(400, 300)
-    frame.layout = null // Disable layout manager for absolute positioning
-
-    val view = View(frame)
-    val model = Model()
-    val controller = Controller(model, view)
-    view.setDispatcher(controller::dispatch)
-
-    // Make the frame visible
-    view.draw()
-    frame.isVisible = true
 }
