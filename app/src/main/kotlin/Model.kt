@@ -1,8 +1,9 @@
+import kotlin.collections.toMutableMap
 import kotlin.random.Random
 
 
 class Shoe() {
-    var distribution = all_cards.map { Pair(it, if (it.denom == 'T') 4 else 1) }.toMap()
+    val distribution: MutableMap<Card, Int> = all_cards.map { it to if (it.denom == 'T') 16 else 4 }.toMap().toMutableMap()
 
     fun drawCard() : Card {
         val totalSum = distribution.values.sum()
@@ -16,11 +17,13 @@ class Shoe() {
         for ((key, probability) in normalizedDistribution) {
             cumulativeProbability += probability
             if (randomValue <= cumulativeProbability) {
-                return key
+                val result = key
+                distribution[result] = distribution[result]!! - 1
+                return result
             }
         }
 
-        throw IllegalArgumentException("Invalid distribution.  This should never happen.")
+        throw IllegalArgumentException("Ran out of cards.")
     }
 }
 

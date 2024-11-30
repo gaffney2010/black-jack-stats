@@ -5,7 +5,7 @@ fun main() {
     // Create the main frame
     val frame = JFrame("Black Jack")
     frame.defaultCloseOperation = JFrame.EXIT_ON_CLOSE
-    frame.setSize(400, 300)
+    frame.setSize(600, 400)
     frame.layout = null // Disable layout manager for absolute positioning
 
     val view = View(frame)

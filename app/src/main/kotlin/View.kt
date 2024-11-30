@@ -75,7 +75,7 @@ class StatusGlyph(x: Int, y: Int) : Glyph(x, y) {
     }
 
     override fun draw_this(frame: JFrame, offX: Int, offY: Int) {
-        scrollPane.setBounds(offX, offY, 200, 100)
+        scrollPane.setBounds(offX, offY, 200, 300)
         frame.add(scrollPane)
     }
 }
@@ -112,14 +112,14 @@ class View(val frame: JFrame) {
     val dealButton: ButtonGlyph
 
     init {
-        val playArea = screen.addChild(Glyph(0, 0))
+        val playArea = screen.addChild(Glyph(0, 60))
         dealer = playArea.addChild(HandGlyph(15, 15))
         human = playArea.addChild(HandGlyph(15, 60))
     
-        status = playArea.addChild(StatusGlyph(200, 0))
+        status = screen.addChild(StatusGlyph(300, 60))
         status.appendText("Starting game\n")
 
-        val buttons = playArea.addChild(Glyph(0, 100))
+        val buttons = playArea.addChild(Glyph(0, 240))
         hitButton = buttons.addChild(ButtonGlyph(0, 0, "Hit"))
         hitButton.addListener { dispatch(Button.Hit) }
         standButton = buttons.addChild(ButtonGlyph(100, 0, "Stand"))
