@@ -30,8 +30,8 @@ class Shoe() {
 class Model() {
     val shoe = Shoe()
 
-    var dealerShowing = HandValue(0, false)
-    var humanShowing = HandValue(0, false)
+    var dealerShowing = HandValue(0, false, 0)
+    var humanShowing = HandValue(0, false, 0)
     var isEndOfHand = false
 
     var profit: Float = 0.0f
@@ -39,21 +39,23 @@ class Model() {
     fun updateHand(player: Player, card: Card) {
         if (player == Player.Dealer) {
             if (card == Card('A')) {
-                dealerShowing = HandValue(dealerShowing.value + 11, true)
+                dealerShowing = HandValue(dealerShowing.value + 11, true, dealerShowing.nCards + 1)
             } else {
                 dealerShowing.value += cardValue(card)
+                dealerShowing.nCards += 1
             }
             if (dealerShowing.value > 21 && dealerShowing.soft) {
-                dealerShowing = HandValue(dealerShowing.value - 10, false)
+                dealerShowing = HandValue(dealerShowing.value - 10, false, dealerShowing.nCards)
             }
         } else {
             if (card == Card('A')) {
-                humanShowing = HandValue(humanShowing.value + 11, true)
+                humanShowing = HandValue(humanShowing.value + 11, true, humanShowing.nCards + 1)
             } else {
                 humanShowing.value += cardValue(card)
+                humanShowing.nCards += 1
             }
             if (humanShowing.value > 21 && humanShowing.soft) {
-                humanShowing = HandValue(humanShowing.value - 10, false)
+                humanShowing = HandValue(humanShowing.value - 10, false, humanShowing.nCards)
             }
         }
     }
@@ -93,8 +95,16 @@ class Model() {
         return false
     }
 
+    fun isBlackjack(player: Player) : Boolean {
+        return when (player) {
+            Player.Dealer -> dealerShowing.value == 21 && dealerShowing.nCards == 2
+            Player.Human -> humanShowing.value == 21 && humanShowing.nCards == 2
+        }
+    }
+
     fun result() : Result {
         return when {
+            isBlackjack(Player.Dealer) -> Result.DealerBlackjack
             humanShowing.value > 21 -> Result.HumanBust
             dealerShowing.value > 21 -> Result.DealerBust
             humanShowing.value > dealerShowing.value -> Result.Human
@@ -108,8 +118,8 @@ class Model() {
     }
 
     fun updateStartOfHand() {
-        dealerShowing = HandValue(0, false)
-        humanShowing = HandValue(0, false)
+        dealerShowing = HandValue(0, false, 0)
+        humanShowing = HandValue(0, false, 0)
         isEndOfHand = false
     }
 
@@ -120,6 +130,8 @@ class Model() {
             Result.Tie -> 0.0f
             Result.HumanBust -> -1.0f
             Result.DealerBust -> 1.0f
+            Result.HumanBlackjack -> 1.5f
+            Result.DealerBlackjack -> -1.0f
         }
         profit += delta
         return profit

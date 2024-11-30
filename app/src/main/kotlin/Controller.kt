@@ -41,6 +41,15 @@ class Controller(val model: Model, val view: View) {
         card = drawCardUpdates(Player.Human)
         card = drawCardUpdates(Player.Human)
         view.updateStatus(model.showing(Player.Dealer), model.showing(Player.Human))
+        if (model.isBlackjack(Player.Human)) {
+            // Have to check if it's a draw
+            drawCardUpdates(Player.Dealer)
+            if (model.isBlackjack(Player.Dealer)) {
+                endOfHand(Result.Tie)
+            } else {
+                endOfHand(Result.HumanBlackjack)
+            }
+        }
         view.draw()
     }
 

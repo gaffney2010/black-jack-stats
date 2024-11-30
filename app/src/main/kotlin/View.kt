@@ -260,6 +260,8 @@ class View(val frame: JFrame) {
             Result.Tie -> "Tie\n"
             Result.HumanBust -> "Player busts\n"
             Result.DealerBust -> "Dealer busts\n"
+            Result.DealerBlackjack -> "Dealer blackjack\n"
+            Result.HumanBlackjack -> "Player blackjack\n"
         })
         hitButton.disable()
         standButton.disable()

@@ -2,7 +2,7 @@ data class Card(val denom: Char);
 val all_denoms = listOf('A', '2', '3', '4', '5', '6', '7', '8', '9', 'T')
 val all_cards = all_denoms.map { Card(it) }
 
-data class HandValue(var value: Int, var soft: Boolean)
+data class HandValue(var value: Int, var soft: Boolean, var nCards: Int)
 
 fun handValueStr(value: HandValue) : String {
     return when (value.soft) {
@@ -20,7 +20,7 @@ enum class PlayerBoth {
 }
 
 enum class Result {
-    Human, Dealer, Tie, HumanBust, DealerBust
+    Human, Dealer, Tie, HumanBust, DealerBust, HumanBlackjack, DealerBlackjack
 }
 
 enum class Button {
