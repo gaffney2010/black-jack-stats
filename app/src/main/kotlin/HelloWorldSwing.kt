@@ -9,6 +9,22 @@ data class Card(val denom: Char);
 val all_denoms = listOf('A', '2', '3', '4', '5', '6', '7', '8', '9', 'T')
 val all_cards = all_denoms.map { Card(it) }
 
+enum class Player {
+    Dealer, Human
+}
+
+enum class Button {
+    Hit, Stand, Deal
+}
+
+fun cardValue(card: Card) : Int {
+    return when (card.denom) {
+        'A' -> 1
+        'T' -> 10
+        else -> card.denom.toString().toInt()
+    }
+}
+
 open class Glyph(val x: Int, val y: Int) {
     val children: MutableList<Glyph> = mutableListOf()
 
@@ -106,6 +122,105 @@ class Shoe() {
     }
 }
 
+class View(val frame: JFrame) {
+    val screen = Glyph(0, 0)
+    private lateinit var dispatcher: (Button) -> Unit
+    val dealer: HandGlyph
+    val human: HandGlyph
+
+    init {
+        val playArea = screen.addChild(Glyph(0, 0))
+        dealer = playArea.addChild(HandGlyph(15, 15))
+        human = playArea.addChild(HandGlyph(15, 60))
+    
+        val status = playArea.addChild(StatusGlyph(100, 0))
+        status.appendText("Bet: 1\n")
+
+        val buttons = playArea.addChild(Glyph(0, 100))
+        val betButton = buttons.addChild(ButtonGlyph(0, 0, "Hit"))
+        betButton.addListener { dispatch(Button.Hit) }
+        val dealButton = buttons.addChild(ButtonGlyph(100, 0, "Stand"))
+        dealButton.addListener { dispatch(Button.Stand) }
+        val hitButton = buttons.addChild(ButtonGlyph(200, 0, "Deal"))
+        hitButton.addListener { dispatch(Button.Deal) }
+    }
+
+    fun setDispatcher(dispatcher: (Button) -> Unit) {
+        this.dispatcher = dispatcher
+    }
+
+    private fun dispatch(button: Button) {
+        if (!::dispatcher.isInitialized) {
+            throw IllegalStateException("dispatcher is not initialized")
+        }
+        dispatcher(button)
+    }
+
+    fun draw() {
+        screen.draw(frame)
+        frame.repaint()
+    }
+
+    fun updateHand(player: Player, card: Card) {
+        if (player == Player.Dealer) {
+            dealer.addCard(card)
+        } else {
+            human.addCard(card)
+        }
+    }
+
+    fun updateEndOfHand() {
+    }
+}
+
+class Model() {
+    val shoe = Shoe()
+
+    var dealerShowing = 0
+    var playerShowing = 0
+    var isEndOfHand = false
+
+    private fun updateHand(player: Player, card: Card) {
+        if (player == Player.Dealer) {
+            dealerShowing += cardValue(card)
+        } else {
+            playerShowing += cardValue(card)
+        }
+    }
+
+    fun drawCardUpdateHand(player: Player) : Card {
+        val card = shoe.drawCard()
+        updateHand(player, card)
+        return card
+    }
+
+    fun updateEndOfHand() {
+        isEndOfHand = true
+    }
+}
+
+class Controller(val model: Model, val view: View) {
+    fun hit() {
+        val card = model.drawCardUpdateHand(Player.Human)
+        view.updateHand(Player.Human, card)
+        view.draw()
+    }
+
+    fun stand() {
+    }
+
+    fun deal() {
+    }
+
+    fun dispatch(button: Button) {
+        when (button) {
+            Button.Hit -> hit()
+            Button.Stand -> stand()
+            Button.Deal -> deal()
+        }
+    }
+}
+
 fun main() {
     // Create the main frame
     val frame = JFrame("Box with Centered Text in Kotlin")
@@ -113,31 +228,12 @@ fun main() {
     frame.setSize(400, 300)
     frame.layout = null // Disable layout manager for absolute positioning
 
-    val shoe = Shoe()
-
-    val screen = Glyph(0, 0)
-
-    val playArea = screen.addChild(Glyph(0, 0))
-    var dealer = playArea.addChild(HandGlyph(15, 15))
-    dealer.addCard(shoe.drawCard())
-    dealer.addCard(Card(' '))
-    var player = playArea.addChild(HandGlyph(15, 60))
-    player.addCard(shoe.drawCard())
-    player.addCard(shoe.drawCard())
-
-    val status = playArea.addChild(StatusGlyph(100, 0))
-    status.appendText("Bet: 1\n")
-
-    val buttons = playArea.addChild(Glyph(0, 100))
-    val betButton = buttons.addChild(ButtonGlyph(0, 0, "Bet"))
-    betButton.addListener { status.appendText("Bet: 1\n") }
-    val dealButton = buttons.addChild(ButtonGlyph(100, 0, "Deal"))
-    dealButton.addListener { status.appendText("Deal\n") }
-    val hitButton = buttons.addChild(ButtonGlyph(200, 0, "Hit"))
-    hitButton.addListener { status.appendText("Hit\n") }
-
-    screen.draw(frame)
+    val view = View(frame)
+    val model = Model()
+    val controller = Controller(model, view)
+    view.setDispatcher(controller::dispatch)
 
     // Make the frame visible
+    view.draw()
     frame.isVisible = true
 }
