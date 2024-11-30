@@ -30,17 +30,31 @@ class Shoe() {
 class Model() {
     val shoe = Shoe()
 
-    var dealerShowing = 0
-    var humanShowing = 0
+    var dealerShowing = HandValue(0, false)
+    var humanShowing = HandValue(0, false)
     var isEndOfHand = false
 
     var profit: Float = 0.0f
 
     fun updateHand(player: Player, card: Card) {
         if (player == Player.Dealer) {
-            dealerShowing += cardValue(card)
+            if (card == Card('A')) {
+                dealerShowing = HandValue(dealerShowing.value + 11, true)
+            } else {
+                dealerShowing.value += cardValue(card)
+            }
+            if (dealerShowing.value > 21 && dealerShowing.soft) {
+                dealerShowing = HandValue(dealerShowing.value - 10, false)
+            }
         } else {
-            humanShowing += cardValue(card)
+            if (card == Card('A')) {
+                humanShowing = HandValue(humanShowing.value + 11, true)
+            } else {
+                humanShowing.value += cardValue(card)
+            }
+            if (humanShowing.value > 21 && humanShowing.soft) {
+                humanShowing = HandValue(humanShowing.value - 10, false)
+            }
         }
     }
 
@@ -55,7 +69,7 @@ class Model() {
         return Pair(card, shoe.distribution)
     }
 
-    fun showing(player: Player) : Int {
+    fun showing(player: Player) : HandValue {
         return when (player) {
             Player.Dealer -> dealerShowing
             Player.Human -> humanShowing
@@ -64,21 +78,27 @@ class Model() {
 
     fun isBust(player: Player) : Boolean {
         return when (player) {
-            Player.Dealer -> dealerShowing > 21
-            Player.Human -> humanShowing > 21
+            Player.Dealer -> dealerShowing.value > 21
+            Player.Human -> humanShowing.value > 21
         }
     }
     
     fun dealerShouldDraw() : Boolean {
-        return dealerShowing < 17
+        if (dealerShowing.value < 17) {
+            return true
+        }
+        if (dealerShowing.soft && dealerShowing.value < 18) {
+            return true
+        }
+        return false
     }
 
     fun result() : Result {
         return when {
-            humanShowing > 21 -> Result.HumanBust
-            dealerShowing > 21 -> Result.DealerBust
-            humanShowing > dealerShowing -> Result.Human
-            humanShowing < dealerShowing -> Result.Dealer
+            humanShowing.value > 21 -> Result.HumanBust
+            dealerShowing.value > 21 -> Result.DealerBust
+            humanShowing.value > dealerShowing.value -> Result.Human
+            humanShowing.value < dealerShowing.value -> Result.Dealer
             else -> Result.Tie
         }
     }
@@ -88,8 +108,8 @@ class Model() {
     }
 
     fun updateStartOfHand() {
-        dealerShowing = 0
-        humanShowing = 0
+        dealerShowing = HandValue(0, false)
+        humanShowing = HandValue(0, false)
         isEndOfHand = false
     }
 

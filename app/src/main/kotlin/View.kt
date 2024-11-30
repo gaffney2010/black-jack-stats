@@ -244,12 +244,12 @@ class View(val frame: JFrame) {
         }
     }
 
-    fun updateStatus(dealerShowing: Int, humanShowing: Int, playerBoth: PlayerBoth = PlayerBoth.Both) {
+    fun updateStatus(dealerShowing: HandValue, humanShowing: HandValue, playerBoth: PlayerBoth = PlayerBoth.Both) {
         if (playerBoth == PlayerBoth.Both || playerBoth == PlayerBoth.Dealer) {
-            status.appendText("Dealer showing $dealerShowing\n")
+            status.appendText("Dealer showing ${handValueStr(dealerShowing)}\n")
         }
         if (playerBoth == PlayerBoth.Both || playerBoth == PlayerBoth.Human) {
-            status.appendText("Player showing $humanShowing\n")
+            status.appendText("Player showing ${handValueStr(humanShowing)}\n")
         }
     }
 
