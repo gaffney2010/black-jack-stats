@@ -34,6 +34,8 @@ class Model() {
     var humanShowing = 0
     var isEndOfHand = false
 
+    var profit: Float = 0.0f
+
     fun updateHand(player: Player, card: Card) {
         if (player == Player.Dealer) {
             dealerShowing += cardValue(card)
@@ -89,5 +91,17 @@ class Model() {
         dealerShowing = 0
         humanShowing = 0
         isEndOfHand = false
+    }
+
+    fun updateProfit(result: Result): Float {
+        val delta = when (result) {
+            Result.Human -> 1.0f
+            Result.Dealer -> -1.0f
+            Result.Tie -> 0.0f
+            Result.HumanBust -> -1.0f
+            Result.DealerBust -> 1.0f
+        }
+        profit += delta
+        return profit
     }
 }

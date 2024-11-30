@@ -8,13 +8,19 @@ class Controller(val model: Model, val view: View) {
         return card
     }
 
+    private fun endOfHand(result: Result) {
+        view.updateEndOfHand(result)
+        model.updateEndOfHand()
+        val profit = model.updateProfit(result)
+        view.updateProfit(profit)
+    }
+
     fun hit() {
         val card = drawCardUpdates(Player.Human)
         view.updateStatus(model.showing(Player.Dealer), model.showing(Player.Human), PlayerBoth.Human)
         if (model.isBust(Player.Human)) {
-            view.updateEndOfHand(Result.HumanBust)
             val card = drawCardUpdates(Player.Dealer)
-            model.updateEndOfHand()
+            endOfHand(Result.HumanBust)
         }
         view.draw()
     }
@@ -24,8 +30,7 @@ class Controller(val model: Model, val view: View) {
             val card = drawCardUpdates(Player.Dealer)
         }
         view.updateStatus(model.showing(Player.Dealer), model.showing(Player.Human), PlayerBoth.Both)
-        model.updateEndOfHand()
-        view.updateEndOfHand(model.result())
+        endOfHand(model.result())
         view.draw()
     }
 

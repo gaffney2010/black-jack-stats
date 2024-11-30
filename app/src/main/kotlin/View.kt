@@ -148,10 +148,39 @@ class DistributionGlyph(x: Int, y: Int) : Glyph(x, y) {
     }
 }
 
+
+class ProfitGlyph(x: Int, y: Int) : Glyph(x, y) {
+    var profit = 0.0f
+    val label = JLabel("Profit: $profit")
+
+    init {
+        label.horizontalAlignment = JLabel.CENTER
+        label.verticalAlignment = JLabel.CENTER
+        label.font = Font("Arial", Font.PLAIN, 16)
+        label.isVisible = true
+    }
+
+    fun updateProfit(frame: JFrame,profit: Float) {
+        erase(frame)
+        this.profit = profit
+        label.text = "Profit: $profit"
+    }
+
+    override fun draw_this(frame: JFrame, offX: Int, offY: Int) {
+        label.setBounds(offX, offY, 100, 20)
+        frame.add(label)
+    }
+
+    override fun erase(frame: JFrame) {
+        frame.remove(label)
+    }
+}
+
 class View(val frame: JFrame) {
     val screen = Glyph(0, 0)
     private lateinit var dispatcher: (Button) -> Unit
     val distribution: DistributionGlyph
+    val profit: ProfitGlyph
     val dealer: HandGlyph
     val human: HandGlyph
     val status: StatusGlyph
@@ -161,6 +190,8 @@ class View(val frame: JFrame) {
 
     init {
         distribution = screen.addChild(DistributionGlyph(0, 0))
+
+        profit = screen.addChild(ProfitGlyph(300, 10))
 
         val playArea = screen.addChild(Glyph(0, 60))
         dealer = playArea.addChild(HandGlyph(15, 15))
@@ -196,6 +227,10 @@ class View(val frame: JFrame) {
 
     fun updateDistribution(distribution: Map<Card, Int>) {
         this.distribution.updateDistribution(frame, distribution)
+    }
+
+    fun updateProfit(profit: Float) {
+        this.profit.updateProfit(frame, profit)
     }
 
     fun updateHand(player: Player, card: Card) {
@@ -237,5 +272,6 @@ class View(val frame: JFrame) {
         hitButton.enable()
         standButton.enable()
         dealButton.disable()
+        status.appendText("\n Dealing cards...\n")
     }
 }
