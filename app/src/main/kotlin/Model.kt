@@ -34,7 +34,7 @@ class Model() {
     var humanShowing = 0
     var isEndOfHand = false
 
-    private fun updateHand(player: Player, card: Card) {
+    fun updateHand(player: Player, card: Card) {
         if (player == Player.Dealer) {
             dealerShowing += cardValue(card)
         } else {
@@ -46,6 +46,11 @@ class Model() {
         val card = shoe.drawCard()
         updateHand(player, card)
         return card
+    }
+
+    fun drawCardUpdateDistribution(player: Player) : Pair<Card, Map<Card, Int>> {
+        val card = shoe.drawCard()
+        return Pair(card, shoe.distribution)
     }
 
     fun showing(player: Player) : Int {

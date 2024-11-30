@@ -48,6 +48,26 @@ class CardGlyph(x: Int, y: Int, val card: Card) : Glyph(x, y) {
     }
 }
 
+class CountGlyph(x: Int, y: Int, val count: Int) : Glyph(x, y) {
+    val label = JLabel(count.toString())
+
+    init {
+        label.horizontalAlignment = JLabel.CENTER
+        label.verticalAlignment = JLabel.CENTER
+        label.font = Font("Arial", Font.PLAIN, 16)
+        label.isVisible = true
+    }
+
+    override fun draw_this(frame: JFrame, offX: Int, offY: Int) {
+        label.setBounds(offX, offY, 20, 20)
+        frame.add(label)
+    }
+
+    override fun erase(frame: JFrame) {
+        frame.remove(label)
+    }
+}
+
 class HandGlyph(x: Int, y: Int) : Glyph(x, y) {
     fun addCard(card: Card) : Glyph {
         return addChild(CardGlyph(25*children.size, 0, card))
@@ -101,9 +121,37 @@ class ButtonGlyph(x: Int, y: Int, buttonText: String) : Glyph(x, y) {
     }
 }
 
+class DistributionEntryGlyph(x: Int, y: Int, val card: Card, val count: Int) : Glyph(x, y) {
+    val cardGlyph = CardGlyph(0, 0, card)
+    val countGlyph = CountGlyph(0, 30, count)
+
+    init {
+        children.add(cardGlyph)
+        children.add(countGlyph)
+    }
+
+    override fun erase(frame: JFrame) {
+        cardGlyph.erase(frame)
+        countGlyph.erase(frame)
+    }
+}
+
+class DistributionGlyph(x: Int, y: Int) : Glyph(x, y) {
+    fun updateDistribution(frame: JFrame, distribution: Map<Card, Int>) {
+        for (child in children) {
+            child.erase(frame)
+        }
+        children.clear()
+        for ((card, count) in distribution) {
+            addChild(DistributionEntryGlyph(25*children.size, 0, card, count))
+        }
+    }
+}
+
 class View(val frame: JFrame) {
     val screen = Glyph(0, 0)
     private lateinit var dispatcher: (Button) -> Unit
+    val distribution: DistributionGlyph
     val dealer: HandGlyph
     val human: HandGlyph
     val status: StatusGlyph
@@ -112,6 +160,8 @@ class View(val frame: JFrame) {
     val dealButton: ButtonGlyph
 
     init {
+        distribution = screen.addChild(DistributionGlyph(0, 0))
+
         val playArea = screen.addChild(Glyph(0, 60))
         dealer = playArea.addChild(HandGlyph(15, 15))
         human = playArea.addChild(HandGlyph(15, 60))
@@ -142,6 +192,10 @@ class View(val frame: JFrame) {
     fun draw() {
         screen.draw(frame)
         frame.repaint()
+    }
+
+    fun updateDistribution(distribution: Map<Card, Int>) {
+        this.distribution.updateDistribution(frame, distribution)
     }
 
     fun updateHand(player: Player, card: Card) {
