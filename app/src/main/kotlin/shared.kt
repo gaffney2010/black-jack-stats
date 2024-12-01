@@ -20,11 +20,11 @@ enum class PlayerBoth {
 }
 
 enum class Result {
-    Human, Dealer, Tie, HumanBust, DealerBust, HumanBlackjack, DealerBlackjack
+    Human, Dealer, Tie, HumanBust, DealerBust, HumanBlackjack, DealerBlackjack, DoubleWin, DoubleLoss, DoubleTie
 }
 
 enum class Button {
-    Hit, Stand, Deal
+    Hit, Stand, Deal, Double
 }
 
 fun cardValue(card: Card) : Int {

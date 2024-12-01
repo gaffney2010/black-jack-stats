@@ -132,6 +132,9 @@ class Model() {
             Result.DealerBust -> 1.0f
             Result.HumanBlackjack -> 1.5f
             Result.DealerBlackjack -> -1.0f
+            Result.DoubleWin -> 2.0f
+            Result.DoubleLoss -> -2.0f 
+            Result.DoubleTie -> 0.0f
         }
         profit += delta
         return profit

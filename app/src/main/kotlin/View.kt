@@ -187,6 +187,7 @@ class View(val frame: JFrame) {
     val hitButton: ButtonGlyph
     val standButton: ButtonGlyph
     val dealButton: ButtonGlyph
+    val doubleButton: ButtonGlyph
 
     init {
         distribution = screen.addChild(DistributionGlyph(0, 0))
@@ -207,6 +208,8 @@ class View(val frame: JFrame) {
         standButton.addListener { dispatch(Button.Stand) }
         dealButton = buttons.addChild(ButtonGlyph(200, 0, "Deal"))
         dealButton.addListener { dispatch(Button.Deal) }
+        doubleButton = buttons.addChild(ButtonGlyph(0, 30, "Double"))
+        doubleButton.addListener { dispatch(Button.Double) }
     }
 
     fun setDispatcher(dispatcher: (Button) -> Unit) {
@@ -257,15 +260,19 @@ class View(val frame: JFrame) {
         status.appendText(when (result) {
             Result.Human -> "Player wins\n"
             Result.Dealer -> "Dealer wins\n"
-            Result.Tie -> "Tie\n"
+            Result.Tie -> "Push\n"
             Result.HumanBust -> "Player busts\n"
             Result.DealerBust -> "Dealer busts\n"
             Result.DealerBlackjack -> "Dealer blackjack\n"
             Result.HumanBlackjack -> "Player blackjack\n"
+            Result.DoubleWin -> "Win 2 bets\n"
+            Result.DoubleLoss -> "Lose 2 bets\n"
+            Result.DoubleTie -> "Push\n"
         })
         hitButton.disable()
         standButton.disable()
         dealButton.enable()
+        doubleButton.disable()
     }
 
     fun updateStartOfHand() {
@@ -274,6 +281,7 @@ class View(val frame: JFrame) {
         hitButton.enable()
         standButton.enable()
         dealButton.disable()
+        doubleButton.enable()
         status.appendText("\n Dealing cards...\n")
     }
 }
