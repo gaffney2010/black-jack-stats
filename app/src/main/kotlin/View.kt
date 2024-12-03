@@ -160,10 +160,10 @@ class ProfitGlyph(x: Int, y: Int) : Glyph(x, y) {
         label.isVisible = true
     }
 
-    fun updateProfit(frame: JFrame,profit: Float) {
+    fun updateProfit(frame: JFrame, profit: Float) {
         erase(frame)
-        this.profit = profit
-        label.text = "Profit: $profit"
+        this.profit += profit
+        label.text = "Profit: ${this.profit}"
     }
 
     override fun draw_this(frame: JFrame, offX: Int, offY: Int) {
@@ -182,12 +182,15 @@ class View(val frame: JFrame) {
     val distribution: DistributionGlyph
     val profit: ProfitGlyph
     val dealer: HandGlyph
-    val human: HandGlyph
+    val humans: List<HandGlyph>
     val status: StatusGlyph
     val hitButton: ButtonGlyph
     val standButton: ButtonGlyph
     val dealButton: ButtonGlyph
     val doubleButton: ButtonGlyph
+    val splitButton: ButtonGlyph
+
+    var playerHandIndex = 1
 
     init {
         distribution = screen.addChild(DistributionGlyph(0, 0))
@@ -196,7 +199,14 @@ class View(val frame: JFrame) {
 
         val playArea = screen.addChild(Glyph(0, 60))
         dealer = playArea.addChild(HandGlyph(15, 15))
-        human = playArea.addChild(HandGlyph(15, 60))
+        // Only support 5 of these
+        humans = listOf(
+            playArea.addChild(HandGlyph(15, 60)),
+            playArea.addChild(HandGlyph(15, 90)),
+            playArea.addChild(HandGlyph(15, 120)),
+            playArea.addChild(HandGlyph(15, 150)),
+            playArea.addChild(HandGlyph(15, 180)),
+        )
     
         status = screen.addChild(StatusGlyph(300, 60))
         status.appendText("Starting game\n")
@@ -210,6 +220,8 @@ class View(val frame: JFrame) {
         dealButton.addListener { dispatch(Button.Deal) }
         doubleButton = buttons.addChild(ButtonGlyph(0, 30, "Double"))
         doubleButton.addListener { dispatch(Button.Double) }
+        splitButton = buttons.addChild(ButtonGlyph(100, 30, "Split")) 
+        splitButton.addListener { dispatch(Button.Split) }
     }
 
     fun setDispatcher(dispatcher: (Button) -> Unit) {
@@ -228,23 +240,90 @@ class View(val frame: JFrame) {
         frame.repaint()
     }
 
+    fun addCard(player: Player, card: Card) {
+        if (player.index == DEALER_INDEX) {
+            dealer.addCard(card)
+            status.appendText("Dealer draws ${card.denom}\n")
+        } else {
+            humans[player.index-1].addCard(card)
+            status.appendText("Player hand ${player.index} draws ${card.denom}\n")
+        }
+    }
+
     fun updateDistribution(distribution: Map<Card, Int>) {
         this.distribution.updateDistribution(frame, distribution)
+    }
+
+    fun updateButtons(buttons: List<Button>) {
+        if (buttons.contains(Button.Deal)) {
+            dealButton.enable()
+        } else {
+            dealButton.disable()
+        }
+        if (buttons.contains(Button.Hit)) {
+            hitButton.enable()
+        } else {
+            hitButton.disable()
+        }
+        if (buttons.contains(Button.Stand)) {
+            standButton.enable()
+        } else {
+            standButton.disable()
+        }
+        if (buttons.contains(Button.Double)) {
+            doubleButton.enable()
+        } else {
+            doubleButton.disable()
+        }
+        if (buttons.contains(Button.Split)) {
+            splitButton.enable()
+        } else {
+            splitButton.disable()
+        }
+    }
+
+    fun updateResult(result: Result, hand: Int) {
+        status.appendText(when (result) {
+            Result.Human -> "Player wins hand $hand\n"
+            Result.Dealer -> "Dealer wins hand $hand\n"
+            Result.Tie -> "Push on hand $hand\n"
+            Result.HumanBust -> "Player busts hand $hand\n"
+            Result.DealerBust -> "Dealer busts hand $hand\n"
+            Result.DealerBlackjack -> "Dealer blackjack\n"
+            Result.HumanBlackjack -> "Player blackjack hand $hand\n"
+            Result.HumanBlackjackTwoToOne -> "Player blackjack 2:1 hand $hand\n"
+            Result.DoubleWin -> "Double win on hand $hand\n"
+            Result.DoubleLoss -> "Double loss on hand $hand\n"
+            Result.DoubleDealerBust -> "Double - dealer bust on hand $hand\n" 
+            Result.DoubleHumanBust -> "Double - player bust on hand $hand\n"
+        })
     }
 
     fun updateProfit(profit: Float) {
         this.profit.updateProfit(frame, profit)
     }
 
-    fun updateHand(player: Player, card: Card) {
-        if (player == Player.Dealer) {
-            dealer.addCard(card)
-            status.appendText("Dealer draws ${card.denom}\n")
+    fun updateEndOfHand() {}
 
-        } else {
-            human.addCard(card)
-            status.appendText("Player draws ${card.denom}\n")
+    fun advanceToNextHand() {
+        // TODO: Add a hand indicator
+        status.appendText("Next hand\n\n")
+        playerHandIndex += 1
+    }
+
+    fun updateHand(player: Player, card: Card) {
+        assert (player.index > DEALER_INDEX)
+        humans[player.index - 1].clear(frame)
+        humans[player.index - 1].addCard(card)
+    }
+
+    fun updateStartOfHand() {
+        playerHandIndex = 1
+        dealer.clear(frame)
+        for (human in humans) {
+            human.clear(frame)
         }
+        status.appendText("\n Dealing cards...\n")
     }
 
     fun updateStatus(dealerShowing: HandValue, humanShowing: HandValue, playerBoth: PlayerBoth = PlayerBoth.Both) {
@@ -256,32 +335,7 @@ class View(val frame: JFrame) {
         }
     }
 
-    fun updateEndOfHand(result: Result) {
-        status.appendText(when (result) {
-            Result.Human -> "Player wins\n"
-            Result.Dealer -> "Dealer wins\n"
-            Result.Tie -> "Push\n"
-            Result.HumanBust -> "Player busts\n"
-            Result.DealerBust -> "Dealer busts\n"
-            Result.DealerBlackjack -> "Dealer blackjack\n"
-            Result.HumanBlackjack -> "Player blackjack\n"
-            Result.DoubleWin -> "Win 2 bets\n"
-            Result.DoubleLoss -> "Lose 2 bets\n"
-            Result.DoubleTie -> "Push\n"
-        })
-        hitButton.disable()
-        standButton.disable()
-        dealButton.enable()
-        doubleButton.disable()
-    }
-
-    fun updateStartOfHand() {
-        dealer.clear(frame)
-        human.clear(frame)
-        hitButton.enable()
-        standButton.enable()
-        dealButton.disable()
-        doubleButton.enable()
-        status.appendText("\n Dealing cards...\n")
+    fun writeText(text: String) {
+        status.appendText(text)
     }
 }

@@ -3,7 +3,7 @@ import kotlin.random.Random
 
 
 class Shoe() {
-    val distribution: MutableMap<Card, Int> = all_cards.map { it to if (it.denom == 'T') 16 else 4 }.toMap().toMutableMap()
+    val distribution: MutableMap<Card, Int> = all_cards.map { it to 6*if (it.denom == 'T') 16 else 4 }.toMap().toMutableMap()
 
     fun drawCard() : Card {
         val totalSum = distribution.values.sum()
@@ -27,116 +27,206 @@ class Shoe() {
     }
 }
 
+class Hand(val index: Int) {
+    val cards = mutableListOf<Card>()
+    var doubled = false
+    var hardened = false
+
+    fun addCard(card: Card) {
+        cards.add(card)
+    }
+
+    fun clear() {
+        cards.clear()
+    }
+
+    fun updateHand(cards: List<Card>) {
+        this.cards.clear()
+        this.cards.addAll(cards)
+        // For splitting aces
+        hardened = false
+    }
+
+    fun double() {
+        assert(index > 0)
+        doubled = true
+    }
+
+    fun value(): HandValue {
+        var totalValue = 0
+        var isSoft = false
+        for (card in cards) {
+            totalValue += cardValue(card, /*canBeSoft=*/!hardened)
+            if (card.denom == 'A' && !hardened) {
+                isSoft = true
+            }
+        }
+        if (totalValue > 21 && isSoft) {
+            totalValue -= 10
+            isSoft = false
+            hardened = true
+        }
+        return HandValue(totalValue, isSoft)
+    }
+
+    fun nCards() : Int {
+        return cards.size
+    }
+
+    fun isSplittable() : Boolean {
+        return cards.size == 2 && cards[0].denom == cards[1].denom
+    }
+
+    fun isBlackjack() : Boolean {
+        if (cards.size != 2) { return false }
+        return value().value == 21
+    }
+
+    fun isBust() : Boolean {
+        return value().value > 21
+    }
+}
+
 class Model() {
     val shoe = Shoe()
 
-    var dealerShowing = HandValue(0, false, 0)
-    var humanShowing = HandValue(0, false, 0)
+    val dealerHand = Hand(0)
+    var humanHands = mutableListOf<Hand>()
     var isEndOfHand = false
+    var humanHandIndex = 0
 
     var profit: Float = 0.0f
-
-    fun updateHand(player: Player, card: Card) {
-        if (player == Player.Dealer) {
-            if (card == Card('A')) {
-                dealerShowing = HandValue(dealerShowing.value + 11, true, dealerShowing.nCards + 1)
-            } else {
-                dealerShowing.value += cardValue(card)
-                dealerShowing.nCards += 1
-            }
-            if (dealerShowing.value > 21 && dealerShowing.soft) {
-                dealerShowing = HandValue(dealerShowing.value - 10, false, dealerShowing.nCards)
-            }
-        } else {
-            if (card == Card('A')) {
-                humanShowing = HandValue(humanShowing.value + 11, true, humanShowing.nCards + 1)
-            } else {
-                humanShowing.value += cardValue(card)
-                humanShowing.nCards += 1
-            }
-            if (humanShowing.value > 21 && humanShowing.soft) {
-                humanShowing = HandValue(humanShowing.value - 10, false, humanShowing.nCards)
-            }
-        }
-    }
-
-    fun drawCardUpdateHand(player: Player) : Card {
-        val card = shoe.drawCard()
-        updateHand(player, card)
-        return card
-    }
 
     fun drawCardUpdateDistribution(player: Player) : Pair<Card, Map<Card, Int>> {
         val card = shoe.drawCard()
         return Pair(card, shoe.distribution)
     }
 
-    fun showing(player: Player) : HandValue {
-        return when (player) {
-            Player.Dealer -> dealerShowing
-            Player.Human -> humanShowing
+    fun addCard(player: Player, card: Card) {
+        if (player.index == DEALER_INDEX) {
+            dealerHand.addCard(card)
+        } else {
+            if (player.index > humanHands.size) {
+                humanHands.add(Hand(player.index))
+            }
+            humanHands[player.index - 1].addCard(card)
         }
     }
 
-    fun isBust(player: Player) : Boolean {
-        return when (player) {
-            Player.Dealer -> dealerShowing.value > 21
-            Player.Human -> humanShowing.value > 21
+    fun activeButtons() : List<Button> {
+        if (isEndOfHand) {
+            return listOf(Button.Deal)
         }
-    }
-    
-    fun dealerShouldDraw() : Boolean {
-        if (dealerShowing.value < 17) {
-            return true
-        }
-        if (dealerShowing.soft && dealerShowing.value < 18) {
-            return true
-        }
-        return false
+
+        val isDoublable = humanHands[humanHandIndex].nCards() == 2
+        val isSplittable = humanHands[humanHandIndex].isSplittable()
+
+        return listOfNotNull<Button>(
+            Button.Hit,
+            Button.Stand,
+            if (isDoublable) Button.Double else null,
+            if (isSplittable) Button.Split else null
+        )
     }
 
-    fun isBlackjack(player: Player) : Boolean {
-        return when (player) {
-            Player.Dealer -> dealerShowing.value == 21 && dealerShowing.nCards == 2
-            Player.Human -> humanShowing.value == 21 && humanShowing.nCards == 2
+    fun resultsUpdateProfit() : List<Pair<Result, Float>> {
+        val results = humanHands.map { hand ->
+            when {
+                hand.isBlackjack() && dealerHand.isBlackjack() -> Pair(Result.Tie, 0.0f)
+                hand.isBlackjack() -> if (humanHands.size > 1)
+                    Pair(Result.HumanBlackjackTwoToOne, 1.0f)
+                else Pair(Result.HumanBlackjack, 1.5f)
+                dealerHand.isBlackjack() -> Pair(Result.DealerBlackjack, -1.0f)
+                hand.doubled -> when {
+                    hand.value().value > 21 -> Pair(Result.DoubleHumanBust, -2.0f)
+                    dealerHand.value().value > 21 -> Pair(Result.DoubleDealerBust, 2.0f)
+                    hand.value().value > dealerHand.value().value -> Pair(Result.DoubleWin, 2.0f)
+                    hand.value().value < dealerHand.value().value -> Pair(Result.DoubleLoss, -2.0f)
+                    else -> Pair(Result.Tie, 0.0f)
+                }
+                hand.value().value > 21 -> Pair(Result.HumanBust, -1.0f)
+                dealerHand.value().value > 21 -> Pair(Result.DealerBust, 1.0f)
+                hand.value().value > dealerHand.value().value -> Pair(Result.Human, 1.0f)
+                hand.value().value < dealerHand.value().value -> Pair(Result.Dealer, -1.0f)
+                else -> Pair(Result.Tie, 0.0f)
+            }
         }
-    }
-
-    fun result() : Result {
-        return when {
-            isBlackjack(Player.Dealer) -> Result.DealerBlackjack
-            humanShowing.value > 21 -> Result.HumanBust
-            dealerShowing.value > 21 -> Result.DealerBust
-            humanShowing.value > dealerShowing.value -> Result.Human
-            humanShowing.value < dealerShowing.value -> Result.Dealer
-            else -> Result.Tie
+        for (result in results) {
+            profit += result.second
         }
+        return results
     }
 
     fun updateEndOfHand() {
         isEndOfHand = true
     }
 
-    fun updateStartOfHand() {
-        dealerShowing = HandValue(0, false, 0)
-        humanShowing = HandValue(0, false, 0)
-        isEndOfHand = false
+    fun allHandsBlackjackOrBust() : Boolean {
+        return humanHands.all { it.isBlackjack() || it.value().value > 21 }
+    }
+    
+    fun dealerShouldDraw() : Boolean {
+        if (dealerHand.value().value < 17) {
+            return true
+        }
+        if (dealerHand.value().soft && dealerHand.value().value < 18) {
+            return true
+        }
+        return false
     }
 
-    fun updateProfit(result: Result): Float {
-        val delta = when (result) {
-            Result.Human -> 1.0f
-            Result.Dealer -> -1.0f
-            Result.Tie -> 0.0f
-            Result.HumanBust -> -1.0f
-            Result.DealerBust -> 1.0f
-            Result.HumanBlackjack -> 1.5f
-            Result.DealerBlackjack -> -1.0f
-            Result.DoubleWin -> 2.0f
-            Result.DoubleLoss -> -2.0f 
-            Result.DoubleTie -> 0.0f
+    fun isAnotherHand() : Boolean {
+        return humanHandIndex < humanHands.size - 1
+    }
+
+    fun advanceToNextHand() {
+        humanHandIndex += 1
+    }
+
+    fun humanHandIndex() : Player {
+        // Outside of this class we use 1-indexed
+        return Player(humanHandIndex + 1)
+    }
+
+    fun isBust() : Boolean {
+        return humanHands[humanHandIndex].isBust()
+    }
+
+    fun doubleBet() {
+        humanHands[humanHandIndex].double()
+    }
+
+    fun getSplitCard() : Card {
+        return humanHands[humanHandIndex].cards[0]
+    }
+
+    fun humanHandsLength() : Int {
+        return humanHands.size
+    }
+
+    fun updateHand(player: Player, card: Card) {
+        assert (player.index > DEALER_INDEX)
+        if (player.index > humanHands.size) {
+            humanHands.add(Hand(player.index))
         }
-        profit += delta
-        return profit
+        humanHands[player.index - 1].updateHand(listOf(card))
+    }
+
+    fun isBlackjack(player: Player) : Boolean {
+        if (player.index == DEALER_INDEX) {
+            return dealerHand.isBlackjack()
+        }
+        return humanHands[player.index - 1].isBlackjack()
+    }
+
+    fun updateStartOfHand() {
+        dealerHand.clear()
+        humanHands = mutableListOf(Hand(1))
+        isEndOfHand = false
+        humanHandIndex = 0
+    }
+
+    fun writeScores(): String {
+        return "Dealer: ${dealerHand.value().value}\n" + humanHands.joinToString("\n") { "Player ${it.index}: ${it.value().value}" } + "\n"
     }
 }
