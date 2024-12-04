@@ -144,6 +144,11 @@ class Controller(val model: Model, val view: View) {
         view.draw()
     }
 
+    fun newShoe() {
+        model.newShoe()
+        deal()
+    }
+
     fun dispatch(button: Button) {
         when (button) {
             Button.Hit -> hit()
@@ -151,6 +156,7 @@ class Controller(val model: Model, val view: View) {
             Button.Deal -> deal()
             Button.Double -> double()
             Button.Split -> split()
+            Button.NewShoe -> newShoe()
         }
     }
 }

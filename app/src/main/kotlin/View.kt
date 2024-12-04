@@ -189,6 +189,7 @@ class View(val frame: JFrame) {
     val dealButton: ButtonGlyph
     val doubleButton: ButtonGlyph
     val splitButton: ButtonGlyph
+    val newShoe: ButtonGlyph
 
     var playerHandIndex = 1
 
@@ -222,6 +223,8 @@ class View(val frame: JFrame) {
         doubleButton.addListener { dispatch(Button.Double) }
         splitButton = buttons.addChild(ButtonGlyph(100, 30, "Split")) 
         splitButton.addListener { dispatch(Button.Split) }
+        newShoe = buttons.addChild(ButtonGlyph(200, 30, "New Shoe"))
+        newShoe.addListener { dispatch(Button.NewShoe) }
     }
 
     fun setDispatcher(dispatcher: (Button) -> Unit) {

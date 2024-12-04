@@ -3,7 +3,7 @@ import kotlin.random.Random
 
 
 class Shoe() {
-    val distribution: MutableMap<Card, Int> = all_cards.map { it to 6*if (it.denom == 'T') 16 else 4 }.toMap().toMutableMap()
+    val distribution: MutableMap<Card, Int> = all_cards.map { it to 1*if (it.denom == 'T') 16 else 4 }.toMap().toMutableMap()
 
     fun drawCard() : Card {
         val totalSum = distribution.values.sum()
@@ -24,6 +24,10 @@ class Shoe() {
         }
 
         throw IllegalArgumentException("Ran out of cards.")
+    }
+
+    fun finished() : Boolean {
+        return distribution.values.sum() < 10
     }
 }
 
@@ -88,7 +92,7 @@ class Hand(val index: Int) {
 }
 
 class Model() {
-    val shoe = Shoe()
+    var shoe = Shoe()
 
     val dealerHand = Hand(0)
     var humanHands = mutableListOf<Hand>()
@@ -115,7 +119,10 @@ class Model() {
 
     fun activeButtons() : List<Button> {
         if (isEndOfHand) {
-            return listOf(Button.Deal)
+            if (shoe.finished()) {
+                return listOf(Button.NewShoe)
+            }
+            return listOf(Button.Deal, Button.NewShoe)
         }
 
         val isDoublable = humanHands[humanHandIndex].nCards() == 2
@@ -228,5 +235,9 @@ class Model() {
 
     fun writeScores(): String {
         return "Dealer: ${dealerHand.value().value}\n" + humanHands.joinToString("\n") { "Player ${it.index}: ${it.value().value}" } + "\n"
+    }
+
+    fun newShoe() {
+        shoe = Shoe()
     }
 }

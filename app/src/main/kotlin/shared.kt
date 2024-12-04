@@ -23,7 +23,7 @@ enum class Result {
 }
 
 enum class Button {
-    Hit, Stand, Deal, Double, Split
+    Hit, Stand, Deal, Double, Split, NewShoe
 }
 
 fun cardValue(card: Card, canBeSoft: Boolean) : Int {
