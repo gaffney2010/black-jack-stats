@@ -6,10 +6,7 @@ class Shoe() {
     val distribution: MutableMap<Card, Int> = all_cards.map { it to 1*if (it.denom == 'T') 16 else 4 }.toMap().toMutableMap()
 
     fun drawCard() : Card {
-        val totalSum = distribution.values.sum()
-        val normalizedDistribution = distribution.mapValues { (_, value) ->
-            value.toDouble() / totalSum
-        }
+        val normalizedDistribution = odds()
 
         val randomValue = Random.nextDouble() // Random value between 0.0 and 1.0
         var cumulativeProbability = 0.0
@@ -29,15 +26,42 @@ class Shoe() {
     fun finished() : Boolean {
         return distribution.values.sum() < 10
     }
+
+    fun odds() : MutableMap<Card, Double> {
+        val totalSum = distribution.values.sum()
+        // TODO: Do this kotlin-style
+        var result = mutableMapOf<Card, Double>()
+        for ((card, count) in distribution) {
+            result[card] = count.toDouble() / totalSum
+        }
+        return result
+    }
 }
 
 class Hand(val index: Int) {
     val cards = mutableListOf<Card>()
     var doubled = false
-    var hardened = false
+
+    fun print() : String {
+        return cards.map { it.denom.toString() }.joinToString(", ")
+    }
 
     fun addCard(card: Card) {
         cards.add(card)
+    }
+
+    fun popCard() : Card {
+        return cards.removeLast()
+    }
+
+    fun shouldDealerDraw() : Boolean {
+        if (value().value < 17) {
+            return true
+        }
+        if (value().soft && value().value < 18) {
+            return true
+        }
+        return false
     }
 
     fun clear() {
@@ -47,8 +71,6 @@ class Hand(val index: Int) {
     fun updateHand(cards: List<Card>) {
         this.cards.clear()
         this.cards.addAll(cards)
-        // For splitting aces
-        hardened = false
     }
 
     fun double() {
@@ -58,19 +80,18 @@ class Hand(val index: Int) {
 
     fun value(): HandValue {
         var totalValue = 0
-        var isSoft = false
+        var nAces = 0
         for (card in cards) {
-            totalValue += cardValue(card, /*canBeSoft=*/!hardened)
-            if (card.denom == 'A' && !hardened) {
-                isSoft = true
+            totalValue += cardValue(card, /*canBeSoft=*/true)
+            if (card.denom == 'A') {
+                nAces += 1
             }
         }
-        if (totalValue > 21 && isSoft) {
+        while (totalValue > 21 && nAces > 0) {
             totalValue -= 10
-            isSoft = false
-            hardened = true
+            nAces -= 1
         }
-        return HandValue(totalValue, isSoft)
+        return HandValue(totalValue, nAces > 0)
     }
 
     fun nCards() : Int {
@@ -173,13 +194,7 @@ class Model() {
     }
     
     fun dealerShouldDraw() : Boolean {
-        if (dealerHand.value().value < 17) {
-            return true
-        }
-        if (dealerHand.value().soft && dealerHand.value().value < 18) {
-            return true
-        }
-        return false
+        return dealerHand.shouldDealerDraw()
     }
 
     fun isAnotherHand() : Boolean {
