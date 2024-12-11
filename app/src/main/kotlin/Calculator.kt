@@ -286,7 +286,9 @@ fun computeSplitSoft(variables: MutableMap<String, Variable>, playerShowing: Int
     return Sum(summands) * Constant(2.0) / (Constant(1.0) - variables["p_A"] as Expression)
 }
 
-fun main() {
+data class EquationSet(val eqn_st: MutableMap<String, Expression>, val eqn_hi: MutableMap<String, Expression>, val eqn_do: MutableMap<String, Expression>, val eqn_sp: MutableMap<String, Expression>)
+
+fun createVariables() : EquationSet {
     val variables = mutableMapOf<String, Variable>()
 
     for (denom in all_denoms) {
@@ -301,26 +303,26 @@ fun main() {
         }
     }
 
-    val eqn_st = mutableMapOf<String, Expression>()
-    val eqn_hi = mutableMapOf<String, Expression>()
-    val eqn_do = mutableMapOf<String, Expression>()
-    val eqn_sp = mutableMapOf<String, Expression>()
+    var eqns = EquationSet(mutableMapOf(), mutableMapOf(), mutableMapOf(), mutableMapOf())
     for (dealerShowing in all_cards) {
         for (playerShowing in 2..21) {
-            eqn_st["${playerShowing}_${dealerShowing.denom}"] = computeStand(variables, playerShowing, dealerShowing)
-            eqn_hi["${playerShowing}_${dealerShowing.denom}"] = computeHit(variables, playerShowing, dealerShowing)
-            eqn_do["${playerShowing}_${dealerShowing.denom}"] = computeDouble(variables, playerShowing, dealerShowing)
-            eqn_sp["${playerShowing}_${dealerShowing.denom}"] = computeSplit(variables, playerShowing, dealerShowing)
+            eqns.eqn_st["${playerShowing}_${dealerShowing.denom}"] = computeStand(variables, playerShowing, dealerShowing)
+            eqns.eqn_hi["${playerShowing}_${dealerShowing.denom}"] = computeHit(variables, playerShowing, dealerShowing)
+            eqns.eqn_do["${playerShowing}_${dealerShowing.denom}"] = computeDouble(variables, playerShowing, dealerShowing)
+            eqns.eqn_sp["${playerShowing}_${dealerShowing.denom}"] = computeSplit(variables, playerShowing, dealerShowing)
         }
         for (playerShowing in 12..21) {
-            eqn_st["s${playerShowing}_${dealerShowing.denom}"] = computeStand(variables, playerShowing, dealerShowing)
-            eqn_hi["s${playerShowing}_${dealerShowing.denom}"] = computeSoftHit(variables, playerShowing, dealerShowing)
-            eqn_do["s${playerShowing}_${dealerShowing.denom}"] = computeSoftDouble(variables, playerShowing, dealerShowing)
-            eqn_sp["s${playerShowing}_${dealerShowing.denom}"] = computeSplitSoft(variables, playerShowing, dealerShowing)
+            eqns.eqn_st["s${playerShowing}_${dealerShowing.denom}"] = computeStand(variables, playerShowing, dealerShowing)
+            eqns.eqn_hi["s${playerShowing}_${dealerShowing.denom}"] = computeSoftHit(variables, playerShowing, dealerShowing)
+            eqns.eqn_do["s${playerShowing}_${dealerShowing.denom}"] = computeSoftDouble(variables, playerShowing, dealerShowing)
+            eqns.eqn_sp["s${playerShowing}_${dealerShowing.denom}"] = computeSplitSoft(variables, playerShowing, dealerShowing)
         }
     }
 
-    val shoe = Shoe()
+    return eqns
+}
+
+fun evaluateShoe(shoe: Shoe, eqns: EquationSet) : MutableMap<String, Double> {
     // TODO: Do this kotlin style
     var values = mutableMapOf<String, Double>()
     for ((key, value) in shoe.odds()) {
@@ -330,15 +332,15 @@ fun main() {
     // Loop through large hards first
     for (playerShowing in 21 downTo 12) {
         for (dealerShowing in all_denoms) {
-            val est = eqn_st["${playerShowing}_$dealerShowing"]!!.evaluate(values)
+            val est = eqns.eqn_st["${playerShowing}_$dealerShowing"]!!.evaluate(values)
             values["est_${playerShowing}_$dealerShowing"] = est
-            val ehi = eqn_hi["${playerShowing}_$dealerShowing"]!!.evaluate(values)
+            val ehi = eqns.eqn_hi["${playerShowing}_$dealerShowing"]!!.evaluate(values)
             if (est > ehi) {
                 values["ehi_${playerShowing}_$dealerShowing"] = est
             } else {
                 values["ehi_${playerShowing}_$dealerShowing"] = ehi
             }
-            val edo = eqn_do["${playerShowing}_$dealerShowing"]!!.evaluate(values)
+            val edo = eqns.eqn_do["${playerShowing}_$dealerShowing"]!!.evaluate(values)
             if (edo > ehi && edo > est) {
                 values["edo_${playerShowing}_$dealerShowing"] = edo
             } else {
@@ -350,15 +352,15 @@ fun main() {
     // Loop through soft hands next
     for (playerShowing in 21 downTo 12) {
         for (dealerShowing in all_denoms) {
-            val est = eqn_st["s${playerShowing}_$dealerShowing"]!!.evaluate(values)
+            val est = eqns.eqn_st["s${playerShowing}_$dealerShowing"]!!.evaluate(values)
             values["est_s${playerShowing}_$dealerShowing"] = est
-            val ehi = eqn_hi["s${playerShowing}_$dealerShowing"]!!.evaluate(values)
+            val ehi = eqns.eqn_hi["s${playerShowing}_$dealerShowing"]!!.evaluate(values)
             if (est > ehi) {
                 values["ehi_s${playerShowing}_$dealerShowing"] = est
             } else {
                 values["ehi_s${playerShowing}_$dealerShowing"] = ehi
             }
-            val edo = eqn_do["s${playerShowing}_$dealerShowing"]!!.evaluate(values)
+            val edo = eqns.eqn_do["s${playerShowing}_$dealerShowing"]!!.evaluate(values)
             if (edo > ehi && edo > est) {
                 values["edo_s${playerShowing}_$dealerShowing"] = edo
             } else {
@@ -370,25 +372,19 @@ fun main() {
     // Then loop through small hard
     for (playerShowing in 11 downTo 3) {
         for (dealerShowing in all_denoms) {
-            val est = eqn_st["${playerShowing}_$dealerShowing"]!!.evaluate(values)
+            val est = eqns.eqn_st["${playerShowing}_$dealerShowing"]!!.evaluate(values)
             values["est_${playerShowing}_$dealerShowing"] = est
-            val ehi = eqn_hi["${playerShowing}_$dealerShowing"]!!.evaluate(values)
+            val ehi = eqns.eqn_hi["${playerShowing}_$dealerShowing"]!!.evaluate(values)
             if (est > ehi) {
                 values["ehi_${playerShowing}_$dealerShowing"] = est
             } else {
                 values["ehi_${playerShowing}_$dealerShowing"] = ehi
             }
-            val edo = eqn_do["${playerShowing}_$dealerShowing"]!!.evaluate(values)
+            val edo = eqns.eqn_do["${playerShowing}_$dealerShowing"]!!.evaluate(values)
             if (edo > ehi && edo > est) {
                 values["edo_${playerShowing}_$dealerShowing"] = edo
             } else {
                 values["edo_${playerShowing}_$dealerShowing"] = values["ehi_${playerShowing}_$dealerShowing"]!!
-            }
-            if (dealerShowing == '7' && playerShowing == 5) {
-                println(est)
-                println(ehi)
-                println(edo)
-                println()
             }
         }
     }
@@ -397,28 +393,31 @@ fun main() {
     for (playerShowing in 4..20 step 2) {
         for (dealerShowing in all_denoms) {
             val edo = values["edo_${playerShowing}_$dealerShowing"]!!
-            val esp = eqn_sp["${playerShowing}_$dealerShowing"]!!.evaluate(values)
+            val esp = eqns.eqn_sp["${playerShowing}_$dealerShowing"]!!.evaluate(values)
             if (edo > esp) {
                 values["esp_${playerShowing}_$dealerShowing"] = edo
             } else {
                 values["esp_${playerShowing}_$dealerShowing"] = esp
             }
-            if (dealerShowing == '7' && playerShowing == 4) {
-                println(edo)
-                println(esp)
-                println()
-            }
         }
     }
     for (dealerShowing in all_denoms) {
         val edo = values["edo_s12_$dealerShowing"]!!
-        val esp = eqn_sp["s12_$dealerShowing"]!!.evaluate(values)
+        val esp = eqns.eqn_sp["s12_$dealerShowing"]!!.evaluate(values)
         if (edo > esp) {
             values["esp_s12_$dealerShowing"] = edo
         } else {
             values["esp_s12_$dealerShowing"] = esp
         }
     }
+
+    return values
+}
+
+fun main() {
+    val equations = createVariables()
+    val shoe = Shoe()
+    val values = evaluateShoe(shoe, equations)
     
     val headers = mutableListOf<String>("Player")
     val rows = mutableListOf<List<String>>()
