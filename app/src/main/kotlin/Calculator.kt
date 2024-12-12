@@ -466,7 +466,7 @@ fun rowsFromShoe(shoe: Shoe) : List<List<String>> {
     return rows
 }
 
-// val baselineRows = rowsFromShoe(Shoe())
+val baselineRows = rowsFromShoe(Shoe())
 
 fun main() {
     val dealerHandHeaders = listOf("P") + all_denoms.map { " $it " }

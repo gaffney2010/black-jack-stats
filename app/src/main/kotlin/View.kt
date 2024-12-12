@@ -1,7 +1,9 @@
 import javax.swing.*
 import javax.swing.border.LineBorder
 import javax.swing.table.DefaultTableModel
+import javax.swing.table.DefaultTableCellRenderer
 import java.awt.Color
+import java.awt.Component
 import java.awt.event.ActionListener
 import java.awt.Font
 
@@ -195,6 +197,33 @@ class ProbabilityGlyph(x: Int, y: Int) : Glyph(x, y) {
         erase(frame)
         tableModel.setRowCount(0)
         rows.forEach { row -> tableModel.addRow(row.toTypedArray()) }
+        table.setDefaultRenderer(Any::class.java, object : DefaultTableCellRenderer() {
+            override fun getTableCellRendererComponent(
+                table: JTable,
+                value: Any?,
+                isSelected: Boolean,
+                hasFocus: Boolean,
+                row: Int,
+                column: Int
+            ): Component {
+                // Get default rendering component
+                val component = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column)
+
+                // Check against baselineRows and set color if different
+                if (row < baselineRows.size && column < baselineRows[row].size) {
+                    val baselineValue = baselineRows[row][column]
+                    if (value != baselineValue) {
+                        component.background = Color.GREEN
+                    } else {
+                        component.background = Color.WHITE
+                    }
+                } else {
+                    component.background = Color.WHITE
+                }
+
+                return component
+            }
+        })
     }
 }
 
