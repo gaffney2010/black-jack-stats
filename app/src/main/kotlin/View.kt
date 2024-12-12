@@ -1,5 +1,6 @@
 import javax.swing.*
 import javax.swing.border.LineBorder
+import javax.swing.table.DefaultTableModel
 import java.awt.Color
 import java.awt.event.ActionListener
 import java.awt.Font
@@ -176,6 +177,27 @@ class ProfitGlyph(x: Int, y: Int) : Glyph(x, y) {
     }
 }
 
+class ProbabilityGlyph(x: Int, y: Int) : Glyph(x, y) {
+    val frame = JFrame("Strategies")
+    val dealerHandHeaders = listOf("P") + all_denoms.map { " $it " }
+    val tableModel = DefaultTableModel()
+    val table = JTable(tableModel)
+
+    init {
+        dealerHandHeaders.forEach { tableModel.addColumn(it) }
+        frame.defaultCloseOperation = JFrame.EXIT_ON_CLOSE
+        frame.add(JScrollPane(table))
+        frame.setSize(300, 670)
+        frame.isVisible = true
+    }
+
+    fun updateProbability(frame: JFrame, rows: List<List<String>>) {
+        erase(frame)
+        tableModel.setRowCount(0)
+        rows.forEach { row -> tableModel.addRow(row.toTypedArray()) }
+    }
+}
+
 class View(val frame: JFrame) {
     val screen = Glyph(0, 0)
     private lateinit var dispatcher: (Button) -> Unit
@@ -184,6 +206,7 @@ class View(val frame: JFrame) {
     val dealer: HandGlyph
     val humans: List<HandGlyph>
     val status: StatusGlyph
+    val strategy: ProbabilityGlyph
     val hitButton: ButtonGlyph
     val standButton: ButtonGlyph
     val dealButton: ButtonGlyph
@@ -211,6 +234,9 @@ class View(val frame: JFrame) {
     
         status = screen.addChild(StatusGlyph(300, 60))
         status.appendText("Starting game\n")
+
+        // This creates a second window for some reason
+        strategy = screen.addChild(ProbabilityGlyph(0, 0))
 
         val buttons = playArea.addChild(Glyph(0, 240))
         hitButton = buttons.addChild(ButtonGlyph(0, 0, "Hit"))
@@ -255,6 +281,11 @@ class View(val frame: JFrame) {
 
     fun updateDistribution(distribution: Map<Card, Int>) {
         this.distribution.updateDistribution(frame, distribution)
+    }
+
+    fun updateStrategy(shoe: Shoe) {
+        val rows = rowsFromShoe(shoe)
+        strategy.updateProbability(frame, rows)
     }
 
     fun updateButtons(buttons: List<Button>) {

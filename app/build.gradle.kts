@@ -45,5 +45,5 @@ java {
 
 application {
     // Define the main class for the application.
-    mainClass = "CalculatorKt"
+    mainClass = "BlackJackKt"
 }

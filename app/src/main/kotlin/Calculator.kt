@@ -1,3 +1,6 @@
+import javax.swing.*
+import javax.swing.table.DefaultTableModel
+
 sealed class Expression {
     abstract fun evaluate(variables: MutableMap<String, Double>): Double
     abstract fun print(): String
@@ -414,67 +417,76 @@ fun evaluateShoe(shoe: Shoe, eqns: EquationSet) : MutableMap<String, Double> {
     return values
 }
 
-fun main() {
-    val equations = createVariables()
-    val shoe = Shoe()
+val equations = createVariables()
+
+fun rowsFromShoe(shoe: Shoe) : List<List<String>> {
+    // val equations = createVariables()
     val values = evaluateShoe(shoe, equations)
-    
-    val headers = mutableListOf<String>("Player")
+
     val rows = mutableListOf<List<String>>()
 
-    for (dealerShowing in all_denoms) {
-        headers.add(" $dealerShowing ")
-    }
-    for (playerShowing in 21 downTo 3) {
-        val row = mutableListOf<String>("$playerShowing")
+    fun addRow(playerShowing: Int, playerName: String, split: Boolean) {
+        val row = mutableListOf<String>(playerName)
         for (dealerShowing in all_denoms) {
-            if (values["edo_${playerShowing}_$dealerShowing"]!! > values["ehi_${playerShowing}_$dealerShowing"]!!) {
-                row.add(" D ")
-            } else if (values["ehi_${playerShowing}_$dealerShowing"]!! > values["est_${playerShowing}_$dealerShowing"]!!) {
-                row.add(" H ")
+            val decision = if (split) {
+                if (values["esp_${playerShowing}_$dealerShowing"]!! > values["edo_${playerShowing}_$dealerShowing"]!!) {
+                    " Y "
+                } else {
+                    " N "
+                }
             } else {
-                row.add(" S ")
+                if (values["edo_${playerShowing}_$dealerShowing"]!! > values["ehi_${playerShowing}_$dealerShowing"]!!) {
+                    " D "
+                } else if (values["ehi_${playerShowing}_$dealerShowing"]!! > values["est_${playerShowing}_$dealerShowing"]!!) {
+                    " H "
+                } else {
+                    " S "
+                }
             }
+            row.add(decision)
         }
         rows.add(row)
+    }
+
+    for (playerShowing in 21 downTo 3) {
+        addRow(playerShowing, "$playerShowing", false)
     }
     for (playerShowing in 21 downTo 13) {
-        val row = mutableListOf<String>("s$playerShowing")
-        for (dealerShowing in all_denoms) {
-            if (values["edo_s${playerShowing}_$dealerShowing"]!! > values["ehi_s${playerShowing}_$dealerShowing"]!!) {
-                row.add(" D ")
-            } else if (values["ehi_s${playerShowing}_$dealerShowing"]!! > values["est_s${playerShowing}_$dealerShowing"]!!) {
-                row.add(" H ")
-            } else {
-                row.add(" S ")
-            }
-        }
-        rows.add(row)
+        addRow(playerShowing, "s$playerShowing", false)
     }
     for (split in all_denoms) {
         if (split == 'A') {
-            val row = mutableListOf<String>("A/A")
-            for (dealerShowing in all_denoms) {
-                if (values["esp_s12_$dealerShowing"]!! > values["ehi_s12_$dealerShowing"]!!) {
-                    row.add(" S ")
-                } else {
-                    row.add(" N ")
-                }
-            }
-            rows.add(row)
+            addRow(12, "A/A", true)
         } else {
-            val row = mutableListOf<String>("${split}/$split")
             val playerShowing = 2 * cardValue(Card(split), /*canBeSoft=*/false)
-            for (dealerShowing in all_denoms) {
-                if (values["esp_${playerShowing}_$dealerShowing"]!! > values["edo_${playerShowing}_$dealerShowing"]!!) {
-                    row.add(" Y ")
-                } else {
-                    row.add(" N ")
-                }
-            }
-            rows.add(row)
+            addRow(playerShowing, "${split}/$split", true)
         }
     }
 
-    prettyPrintTable(headers, rows)
+    return rows
+}
+
+// val baselineRows = rowsFromShoe(Shoe())
+
+fun main() {
+    val dealerHandHeaders = listOf("P") + all_denoms.map { " $it " }
+    val rows = rowsFromShoe(Shoe())
+
+    prettyPrintTable(dealerHandHeaders, rows)
+
+    SwingUtilities.invokeLater {
+        val frame = JFrame("Table Example")
+        frame.defaultCloseOperation = JFrame.EXIT_ON_CLOSE
+
+        val tableModel = DefaultTableModel()
+        dealerHandHeaders.forEach { tableModel.addColumn(it) }
+
+        rows.forEach { row -> tableModel.addRow(row.toTypedArray()) }
+
+        val table = JTable(tableModel)
+        frame.add(JScrollPane(table))
+
+        frame.setSize(300, 670)   
+        frame.isVisible = true
+    }
 }

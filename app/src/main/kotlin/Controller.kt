@@ -141,6 +141,9 @@ class Controller(val model: Model, val view: View) {
         // Enable buttons
         updateButtons()
 
+        // Update the strategy
+        view.updateStrategy(model.shoe)
+
         view.draw()
     }
 
